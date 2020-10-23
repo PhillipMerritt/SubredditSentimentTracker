@@ -1,12 +1,11 @@
 <template>
     <div>
         <GChart
-        :settings="{packages: ['bar']}"
+        type="ColumnChart"
         :data="chartData"
         :options="chartOptions"
-        :createChart="(el, google) => new google.charts.Bar(el)"
-        @ready="onChartReady"
         />
+
         <label>subreddit: </label>
         <input
         type="text"
@@ -52,29 +51,16 @@ export default {
                 ['10/23 am', -0.5],
                 ['10/23 pm', -0.3]
             ],
-            chartParams: {
+            chartOptions: {
                 title: '/r/gaming sentiment 10/20-23'
             }
-        }
-    },
-    computed : {
-        chartOptions () {
-            if (!this.chartsLib) return null
-            return this.chartsLib.charts.Bar.convertOptions({
-                chart: {
-                    title: this.chartParams.title
-                }
-            })
         }
     },
     methods: {
         genChart: function(){
             let data = getSentiment(this.subreddit, this.start, this.end)
             this.chartData = data.data
-            this.chartParams = data.chartOptions.chart
-        },
-        onChartReady (chart, google) {
-            this.chartsLib = google
+            this.chartOptions = data.chartOptions.chart
         }
     }
 }
