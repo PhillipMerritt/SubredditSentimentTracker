@@ -1,5 +1,7 @@
 import * as dateMath from 'date-arithmetic'
 import date from 'date-and-time'
+import FormData from 'form-data'
+import axios from 'axios'
 
 function HSLToHex(h,s,l) {
     s /= 100;
@@ -46,7 +48,16 @@ function heatMapColorforValue(value){
     return "color: " + HSLToHex(h, 100, 50);
 }
 
-function getSentiment (subreddit, start, end) {
+async function getSentiment (subreddit, start, end) {
+  const formData = new FormData()
+  formData.append('subreddit', subreddit)
+  formData.append('start', start)
+  formData.append('end', end)
+  const res = await axios.get('http://localhost:3000/', formData)//, { headers: formData.getHeaders() })
+  console.log(res)
+}
+
+function stubGetSentiment (subreddit, start, end) {
     let data = [['Time Frame', 'Sentiment', { role: 'style' }]]
 
     let start_date = new Date(start)
@@ -94,4 +105,4 @@ function getSentiment (subreddit, start, end) {
     }
 }
 
-export { getSentiment }
+export { getSentiment, stubGetSentiment }

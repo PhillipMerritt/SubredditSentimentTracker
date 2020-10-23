@@ -8,9 +8,12 @@
     "lint": "vue-cli-service lint"
   },
   "dependencies": {
+    "axios": "^0.21.0",
     "core-js": "^3.6.5",
     "date-and-time": "^0.14.1",
     "date-arithmetic": "^4.1.0",
+    "form-data": "^3.0.0",
+    "fs": "0.0.1-security",
     "vue": "^2.6.11",
     "vue-google-charts": "^0.3.3"
   },
