@@ -1,10 +1,13 @@
 <template>
     <div>
-        <GChart
-        type="ColumnChart"
-        :data="chartData"
-        :options="chartOptions"
-        />
+        <div v-if="chartData.length > 0">
+            <GChart
+            type="ColumnChart"
+            :data="chartData"
+            :options="chartOptions"
+            />
+
+        </div>
 
         <label>subreddit: </label>
         <input
@@ -40,20 +43,8 @@ export default {
             subreddit: '',
             start: '',
             end: '',
-            chartData: [
-                ['Time Frame', 'Sentiment'],
-                ['10/20 am', 0.5],
-                ['10/20 pm', 0.65],
-                ['10/21 am', 0.7],
-                ['10/21 pm', 0.3],
-                ['10/22 am', 0.1],
-                ['10/22 pm', -0.2],
-                ['10/23 am', -0.5],
-                ['10/23 pm', -0.3]
-            ],
-            chartOptions: {
-                title: '/r/gaming sentiment 10/20-23'
-            }
+            chartData: [],
+            chartOptions: {}
         }
     },
     methods: {
