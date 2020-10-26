@@ -1,5 +1,7 @@
 import * as dateMath from 'date-arithmetic'
 import date from 'date-and-time'
+import FormData from 'form-data'
+import axios from 'axios'
 
 function HSLToHex(h,s,l) {
     s /= 100;
@@ -46,7 +48,57 @@ function heatMapColorforValue(value){
     return "color: " + HSLToHex(h, 100, 50);
 }
 
-function getSentiment (subreddit, start, end) {
+async function getSentiment (subreddit, start, end) {
+  let request_data = new FormData()
+
+  request_data.append('subreddit', subreddit)
+  request_data.append('start', start)
+  request_data.append('end', end)
+  let resp = await axios.post('http://127.0.0.1:5000/',
+  request_data,
+  {headers: {'Content-Type': 'multipart/form-data' }})
+
+  let response_data = resp.data.sentiments
+
+  let data = [['Time Frame', 'Sentiment', { role: 'style' }]]
+
+  let start_date = new Date(start)
+  let end_date = new Date(end)
+  
+  let length = dateMath.diff(start_date, end_date, "day", false)
+  console.log(length)
+
+  const pattern = date.compile("MM/DD")
+
+  let days = []
+  start_date = dateMath.add(start_date, 1, "day")
+  while(dateMath.lte(start_date, end_date))
+  {
+      days.push(date.format(start_date, pattern))
+      start_date = dateMath.add(start_date, 1, "day")
+  }
+
+  for(var i=0; i < length * 4; i++)
+  {
+      if (i % 4 == 0)
+          data.push([`${days[i / 4]}`, response_data[i], heatMapColorforValue(((-1 * response_data[i]) + 1) / 2)])
+      else
+          data.push([' ', response_data[i], heatMapColorforValue(((-1 * response_data[i]) + 1) / 2)])
+  }
+
+  console.log(data)
+
+  return {
+      data: data,
+      chartOptions: {
+          chart: {
+              title: `/r/${subreddit} sentiment ${start} to ${end}`
+          }
+      }
+  }
+}
+
+function stubGetSentiment (subreddit, start, end) {
     let data = [['Time Frame', 'Sentiment', { role: 'style' }]]
 
     let start_date = new Date(start)
@@ -94,4 +146,4 @@ function getSentiment (subreddit, start, end) {
     }
 }
 
-export { getSentiment }
+export { getSentiment, stubGetSentiment }
