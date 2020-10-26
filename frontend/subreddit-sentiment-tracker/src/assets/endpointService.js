@@ -78,6 +78,8 @@ async function getSentiment (subreddit, start, end) {
       start_date = dateMath.add(start_date, 1, "day")
   }
 
+  days.push(date.format(start_date, pattern))
+
   for(var i=0; i < length * 4; i++)
   {
       if (i % 4 == 0)

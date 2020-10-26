@@ -36,9 +36,10 @@ def getComments(sub, before_str, after_str):
     before, after = convertDateString(before_str), convertDateString(after_str)
     start, end = convertToPosix(before), convertToPosix(after)
 
-    bins = [[] for _ in range((after - before).days * 4)] # create n bins where n is the number of days in the range * 4
+    bins = []
 
-    for bin_idx, start in tqdm(list(enumerate(range(start, end, 21600)))):
+    for start in tqdm(list(range(start, end, 21600))):
+        bins.append([])
         url = 'https://api.pushshift.io/reddit/search/comment/?title='+'&size=10000&after='+str(start)+'&before='+str(start + 86400)+'&subreddit='+str(sub)
         with urllib.request.urlopen(url) as url:
             post_data = json.loads(url.read().decode())
@@ -54,7 +55,7 @@ def getComments(sub, before_str, after_str):
                 #get bin index
                 #bin_idx = getBinIndex(before, datetime.utcfromtimestamp(t))
 
-                bins[bin_idx].append(comment)
+                bins[-1].append(comment)
 
     return bins
 
