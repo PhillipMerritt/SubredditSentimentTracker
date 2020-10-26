@@ -60,25 +60,12 @@ async function getSentiment (subreddit, start, end) {
 
   let response_data = resp.data.sentiments
 
-  let data = [['Time Frame', 'Sentiment', { role: 'style' }]]
+  let keys = Object.keys(response_data)
 
-  let start_date = new Date(start)
-  let end_date = new Date(end)
-  
-  let length = dateMath.diff(start_date, end_date, "day", false)
-  console.log(length)
-
-  const pattern = date.compile("MM/DD")
-
-  let days = []
-  start_date = dateMath.add(start_date, 1, "day")
-  while(dateMath.lte(start_date, end_date))
+  for(var i=0; i < keys.length; i++)
   {
-      days.push(date.format(start_date, pattern))
-      start_date = dateMath.add(start_date, 1, "day")
+    
   }
-
-  days.push(date.format(start_date, pattern))
 
   for(var i=0; i < length * 4; i++)
   {

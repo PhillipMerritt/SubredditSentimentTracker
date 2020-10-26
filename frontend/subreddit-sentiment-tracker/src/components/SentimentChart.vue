@@ -1,12 +1,19 @@
 <template>
     <div>
-        <div v-if="chartData.length > 0">
+        <div v-if="chosenModel != null">
             <GChart
             type="ColumnChart"
-            :data="chartData"
+            :data="selectedData"
             :options="chartOptions"
             />
 
+            <FormulateInput
+            v-model="value"
+            :options="modelOptions"
+            type="select"
+            label="Select a model: "
+            @change="selectOption(option)"
+            />
         </div>
 
         <label>subreddit: </label>
@@ -39,12 +46,23 @@ export default {
     },
     data () {
         return {
-            chartsLib: null,
             subreddit: '',
             start: '',
             end: '',
             chartData: [],
-            chartOptions: {}
+            chartOptions: {},
+            chosenModel: null
+        }
+    },
+    computed: {
+        modelOptions: function () {
+            let options = {}
+            Object.keys(this.chartData).forEach(element => options[element] = element)
+            return options
+        },
+        selectedData: function () {
+            if (this.chartData != null && this.chartData[this.chosenModel] != null)
+                return this.chartData[this.chosenModel]
         }
     },
     methods: {
@@ -52,6 +70,10 @@ export default {
             let data = await getSentiment(this.subreddit, this.start, this.end)
             this.chartData = data.data
             this.chartOptions = data.chartOptions.chart
+            this.chosenModel = Object.keys(this.chartData)[0]
+        },
+        selectOption: function(option){
+            this.chosenModel = option
         }
     }
 }
