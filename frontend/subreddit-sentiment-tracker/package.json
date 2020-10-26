@@ -15,6 +15,8 @@
     "date-arithmetic": "^4.1.0",
     "form-data": "^3.0.0",
     "fs": "0.0.1-security",
+    "sass": "^1.27.0",
+    "sass-loader": "^10.0.4",
     "vue": "^2.6.11",
     "vue-formulate": "^0.12.1",
     "vue-google-charts": "^0.3.3"

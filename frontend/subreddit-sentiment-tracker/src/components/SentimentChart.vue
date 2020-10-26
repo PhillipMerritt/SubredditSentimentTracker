@@ -7,29 +7,43 @@
             :options="chartOptions"
             />
 
-            <FormulateInput
-            v-model="value"
-            :options="modelOptions"
-            type="select"
-            label="Select a model: "
-            @change="selectOption(option)"
-            />
+            <div id="inputs">
+                <FormulateInput
+                v-model="chosenModel"
+                :options="modelOptions"
+                type="select"
+                label="Select a model: "
+                style="margin: 10px; padding: 10px;"
+                />
+            </div>
         </div>
 
-        <label>subreddit: </label>
-        <input
-        type="text"
-        v-model="subreddit">
+        <div id="inputs">
+            <FormulateInput
+            type="text"
+            v-model="subreddit"
+            label="subreddit: "
+            style="margin: 10px; padding: 10px;"/>
 
-        <label>start date: </label>
-        <input type="date"
-        v-model="start">
+            <FormulateInput type="date"
+            v-model="start"
+            label="start date: "
+            style="margin: 10px; padding: 10px;"/>
 
-        <label>end date: </label>
-        <input type="date"
-        v-model="end">
+            <FormulateInput type="date"
+            v-model="end"
+            label="end date: "
+            style="margin: 10px; padding: 10px;"/>
+        </div>
 
-        <button v-on:click="genChart()">Generate Chart</button>
+        <div id="inputs">
+            <FormulateInput 
+            type="button" 
+            label="Generate Chart"
+            v-on:click="genChart()"
+            style="margin: 10px; padding: 10px;"/>
+        </div>
+        
     </div>
 </template>
 
@@ -63,6 +77,7 @@ export default {
         selectedData: function () {
             if (this.chartData != null && this.chartData[this.chosenModel] != null)
                 return this.chartData[this.chosenModel]
+            return null
         }
     },
     methods: {
@@ -73,8 +88,16 @@ export default {
             this.chosenModel = Object.keys(this.chartData)[0]
         },
         selectOption: function(option){
+            console.log(option)
             this.chosenModel = option
         }
     }
 }
 </script>
+
+<style> 
+    #inputs {
+        display: flex;
+        justify-content: center;
+    }
+</style>
