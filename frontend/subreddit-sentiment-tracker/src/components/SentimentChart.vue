@@ -57,8 +57,8 @@ export default {
         }
     },
     methods: {
-        genChart: function(){
-            let data = getSentiment(this.subreddit, this.start, this.end)
+        genChart: async function(){
+            let data = await getSentiment(this.subreddit, this.start, this.end)
             this.chartData = data.data
             this.chartOptions = data.chartOptions.chart
         }
