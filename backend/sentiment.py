@@ -42,7 +42,7 @@ def getComments(sub, after_str, before_str):
 
         # add a new label
         if i % 4 == 0:
-            labels.append(getLabel)
+            labels.append(getLabel(start))
 
         # create a url to request all of the comments between the current value of start and start + 6 hours
         url = 'https://api.pushshift.io/reddit/search/comment/?title='+'&size=10000&after='+str(start)+'&before='+str(start + 86400)+'&subreddit='+str(sub)
@@ -71,14 +71,14 @@ def getSentiments(sub, before, after):
     # create a dict of data lists for each model
     output = {}
     for model in models:
-        output[model.name] = [['Time Frame', 'Sentiment', { role: 'style' }]]
+        output[model.name] = [['Time Frame', 'Sentiment', { "role": 'style' }]]
 
     # for each bin of comments
     for i, bin in enumerate(comments):
         # add another value to each data list
         for model in models:
             if i % 4 == 0:
-                output[model.name].append([labels[i/4], 0.0])
+                output[model.name].append([labels[int(i/4)], 0.0])
             else:
                 output[model.name].append(['', 0.0])
 
