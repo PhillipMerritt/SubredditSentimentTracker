@@ -19,6 +19,12 @@ def getBinIndex(before, current):
     delta = current - before
     return (delta.days * 4) + int(delta.seconds / 21600)
 
+# convert posix time stamp to datetime object
+# then get a MM/DD label
+def getLabel(date):
+    date = datetime.fromtimestamp(date)
+    return date.strftime("%m/%d")
+
 def getComments(sub, after_str, before_str):
     # converts dates like '2020-10-05' to datetime objects
     before, after = convertDateString(before_str), convertDateString(after_str)
@@ -27,11 +33,17 @@ def getComments(sub, after_str, before_str):
     start, end = convertToPosix(after), convertToPosix(before)
 
     bins = []
+    labels = []
 
     # for each 6 hour period between start and end
-    for start in tqdm(list(range(start, end, 21600))):
+    for i, start in tqdm(list(enumerate(range(start, end, 21600)))):
         # add a new bin
         bins.append([])
+
+        # add a new label
+        if i % 4 == 0:
+            labels.append(getLabel(start))
+
         # create a url to request all of the comments between the current value of start and start + 6 hours
         url = 'https://api.pushshift.io/reddit/search/comment/?title='+'&size=10000&after='+str(start)+'&before='+str(start + 86400)+'&subreddit='+str(sub)
         # get the data
@@ -40,9 +52,9 @@ def getComments(sub, after_str, before_str):
             post_data = json.loads(url.read().decode())
 
             # for each comment
-            for i in post_data['data']:
+            for data in post_data['data']:
                 #get comment
-                comment = i['body']
+                comment = data['body']
 
                 # skip empty, removed, or deleted comments
                 if re.match(r'^(\s*\[(removed|deleted)\]\s*)|(\s*)$', comment):
@@ -51,32 +63,35 @@ def getComments(sub, after_str, before_str):
                 # add comment to bin
                 bins[-1].append(comment)
 
-    return bins
+    return bins, labels
 
 def getSentiments(sub, before, after):
-    # get comments for the time frame
-    comments = getComments(sub, before, after)
+    # get comments and labels for the time frame
+    comments, labels = getComments(sub, before, after)
     # create a dict of data lists for each model
     output = {}
     for model in models:
-        output[model.name] = []
+        output[model.name] = [['Time Frame', 'Sentiment', { "role": 'style' }]]
 
     # for each bin of comments
-    for bin in comments:
+    for i, bin in enumerate(comments):
         # add another value to each data list
         for model in models:
-            output[model.name].append(0.0)
+            if i % 4 == 0:
+                output[model.name].append([labels[int(i/4)], 0.0])
+            else:
+                output[model.name].append(['', 0.0])
 
         # sum the sentiment of each comment for each model inidividually
         for comment in bin:
             for model in models:
                 sentiment = model.predict(comment)
-                output[model.name][-1] += sentiment
+                output[model.name][-1][1] += sentiment
         
         # if this isn't an empty bin divide each sum to get the average
         if bin:
             for model in models:
-                output[model.name][-1] /= len(bin)
+                output[model.name][-1][1] /= len(bin)
 
     return output
         

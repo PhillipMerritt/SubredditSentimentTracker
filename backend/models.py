@@ -1,9 +1,13 @@
 from abc import ABC, abstractmethod
+import nltk
+nltk.download('vader_lexicon')
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
+s = SentimentIntensityAnalyzer()
 
 # add an instance of your model to this once you have defined it
 models = []
 
-# all added sentiment analysis models must be wrapped 
+# all added sentiment analysis models must be wrapped  
 # in a class that inherits from this class to enforce 
 # a common api between different models
 class baseSentimentModel(ABC):
@@ -18,6 +22,12 @@ class baseSentimentModel(ABC):
     @abstractmethod
     def predict(self, text):
         pass
+
+class nltkModel(baseSentimentModel):
+    def predict(self, text):
+        return self.model.polarity_scores(text)['compound']
+
+models.append(nltkModel('nltkVader', s))
 
 """
 example of this:

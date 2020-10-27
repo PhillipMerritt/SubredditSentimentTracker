@@ -1,5 +1,3 @@
-import * as dateMath from 'date-arithmetic'
-import date from 'date-and-time'
 import FormData from 'form-data'
 import axios from 'axios'
 import RequestRateLimiter from 'request-rate-limiter'
@@ -103,38 +101,18 @@ async function getSentiment (subreddit, start, end) {
 
   let response_data = resp.data.sentiments
 
-  let data = [['Time Frame', 'Sentiment', { role: 'style' }]]
+  let keys = Object.keys(response_data)
 
-  let start_date = new Date(start)
-  let end_date = new Date(end)
-  
-  let length = dateMath.diff(start_date, end_date, "day", false)
-  console.log(length)
-
-  const pattern = date.compile("MM/DD")
-
-  let days = []
-  start_date = dateMath.add(start_date, 1, "day")
-  while(dateMath.lte(start_date, end_date))
+  for(var i=0; i < keys.length; i++)
   {
-      days.push(date.format(start_date, pattern))
-      start_date = dateMath.add(start_date, 1, "day")
+    for(var j=1; j < response_data[keys[i]].length; j++)
+    {
+      response_data[keys[i]][j].push(heatMapColorforValue(((-1 * response_data[keys[i]][j][1]) + 1) / 2))
+    }
   }
-
-  days.push(date.format(start_date, pattern))
-
-  for(var i=0; i < length * 4; i++)
-  {
-      if (i % 4 == 0)
-          data.push([`${days[i / 4]}`, response_data[i], heatMapColorforValue(((-1 * response_data[i]) + 1) / 2)])
-      else
-          data.push([' ', response_data[i], heatMapColorforValue(((-1 * response_data[i]) + 1) / 2)])
-  }
-
-  console.log(data)
 
   return {
-      data: data,
+      data: response_data,
       chartOptions: {
           chart: {
               title: `/r/${subreddit} sentiment ${start} to ${end}`
@@ -144,45 +122,39 @@ async function getSentiment (subreddit, start, end) {
 }
 
 function stubGetSentiment (subreddit, start, end) {
-    let data = [['Time Frame', 'Sentiment', { role: 'style' }]]
+    let data = {"sentiments": {"model1": [["Time Frame", "Sentiment", { "role": "style" }], 
+    ["10/05", 0.07427789473684211], 
+    ["", 0.1258474747474748],
+    ["", 0.22346881720430106],
+    ["", 0.19327052631578945],
+    ["10/06", 0.1445673684210526],
+    ["", 0.0303391304347826],
+    ["", 0.20081212121212128],
+    ["", 0.1705742268041237]], 
+    "model2": [["Time Frame", "Sentiment", { "role": "style" }], 
+    ["10/05", 0.09241290322580643], 
+    ["", 0.14102959183673466],
+    ["", 0.18095744680851064],
+    ["", 0.14809898989898992],
+    ["10/06", 0.03467916666666665],
+    ["", 0.05460760869565217],
+    ["", 0.14182173913043478],
+    ["", 0.10901313131313133]]}}
 
-    let start_date = new Date(start)
-    let end_date = new Date(end)
-    
-    let length = dateMath.diff(start_date, end_date, "day", false)
+    let response_data = data.sentiments
 
-    const pattern = date.compile("MM/DD")
+    let keys = Object.keys(response_data)
 
-
-    let days = []
-    start_date = dateMath.add(start_date, 1, "day")
-    while(dateMath.lte(start_date, end_date))
+    for(var i=0; i < keys.length; i++)
     {
-        days.push(date.format(start_date, pattern))
-        start_date = dateMath.add(start_date, 1, "day")
+      for(var j=1; j < response_data[keys[i]].length; j++)
+      {
+        response_data[keys[i]][j].push(heatMapColorforValue(((-1 * response_data[keys[i]][j][1]) + 1) / 2))
+      }
     }
-
-    let val = .5
-
-    for(var i=0; i < length * 4; i++)
-    {
-        if (i % 4 == 0)
-            data.push([`${days[i / 4]}`, val, heatMapColorforValue(((-1 * val) + 1) / 2)])
-        else
-            data.push([' ', val, heatMapColorforValue(((-1 * val) + 1) / 2)])
-
-        val += Math.random() * .4 - .2
-
-        if (val > 1.0)
-            val = 1.0
-        else if (val < -1.0)
-            val = -1.0
-    }
-
-    console.log(data)
 
     return {
-        data: data,
+        data: response_data,
         chartOptions: {
             chart: {
                 title: `/r/${subreddit} sentiment ${start} to ${end}`
