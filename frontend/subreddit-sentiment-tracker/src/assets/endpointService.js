@@ -2,6 +2,49 @@ import * as dateMath from 'date-arithmetic'
 import date from 'date-and-time'
 import FormData from 'form-data'
 import axios from 'axios'
+import RequestRateLimiter from 'request-rate-limiter'
+
+const limiter = new RequestRateLimiter({
+  backoffTime: 5,
+  requestRate: 60,
+  interval: 60,
+  timeout: 600,
+});
+
+class MyRequestHandler {
+ 
+  // this method is th eonly required interface to implement
+  // it gets passed the request onfig that is passed by the 
+  // user to the request method of the limiter. The mehtod msut
+  // return an instance of the BackoffError when the limiter 
+  // needs to back off
+  async request(requestConfig) {
+      const response = axios(requestConfig);
+
+      if (response.statusCode === 429) throw new BackoffError(`Need to nack off guys!`);
+      else return response;
+  }
+}
+
+limiter.setRequestHandler(new MyRequestHandler());
+
+function getComments(subreddit, start, end) {
+  let s = Math.floor(new Date(start).getTime() / 1000)
+  let e = Math.floor(new Date(end).getTime() / 1000)
+
+  let requests = []
+
+  while (s < e) {
+    requests.append({method: 'get', 
+    url: `https://api.pushshift.io/reddit/search/comment/?size=100&sort=desc&sort_type=score&after=${s}&before=${start + 3600}&subreddit=${subreddit}`
+    })
+
+    s += 3600
+  }
+
+  const response = axios(requests[0])
+  console.log(response)
+}
 
 function HSLToHex(h,s,l) {
     s /= 100;
