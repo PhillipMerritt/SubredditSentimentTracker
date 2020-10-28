@@ -1,22 +1,15 @@
 //import FormData from 'form-data'
 import axios from 'axios'
 //axios.defaults.headers.common['Access-Control-Allow-Origin'] = '*';
-import Bottleneck from "bottleneck";
-
-const limiter = new Bottleneck({
-  maxConcurrent: 3,
-  minTime: 1000
-});
 
 //const wrapped = limiter.wrap(processRequest);
 
 
 
-async function getComments(subreddit, start, end) {
+/* async function getComments(subreddit, start, end) {
   let posix_start = Math.floor(new Date(start).getTime() / 1000)
   let s = posix_start
   let e = Math.floor(new Date(end).getTime() / 1000)
-  //e = s + 43200
   let days = Math.floor((e - s) / 86400)
   let requests = []
 
@@ -28,13 +21,7 @@ async function getComments(subreddit, start, end) {
     s += 3600
   }
 
-  /* const responses = await limiter.schedule(() => {
-    const allTasks = requests.map(x => wrapped(x));
-
-    return Promise.all(allTasks);
-  }); */
   const responses = await Promise.all(requests.map(x => limiter.schedule(processRequest, x)));
-  //const responses = await limiter.schedule(() =>  processRequest(requests[0]));
 
   let comments = [];
   let response_jsons = [];
@@ -59,18 +46,7 @@ async function getComments(subreddit, start, end) {
 
   return bins;
 }
-
-function getBinIdx(start, current) {
-  return Math.floor((current - start) / 21600)
-}
-
-async function processRequest(params) {
-  let response = await fetch(params.url, params.config);
-  while (response.status != 200)
-    response = await fetch(params.url, params.config);
-  return response
-}
-
+ */
 function HSLToHex(h,s,l) {
     s /= 100;
     l /= 100;
@@ -136,8 +112,7 @@ async function sentimentRequest(comments)
   }) */
 }
 
-async function getSentiment (subreddit, start, end) {
-  let bins = await getComments(subreddit, start, end)
+async function getSentiment (subreddit, start, end, bins) {
   let responses = []
   bins.forEach(bin => responses.push(sentimentRequest(bin)))
   responses = await Promise.all(responses)
