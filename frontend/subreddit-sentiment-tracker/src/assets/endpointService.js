@@ -1,47 +1,74 @@
-import FormData from 'form-data'
+//import FormData from 'form-data'
 import axios from 'axios'
-import RequestRateLimiter from 'request-rate-limiter'
+//axios.defaults.headers.common['Access-Control-Allow-Origin'] = '*';
+import Bottleneck from "bottleneck";
 
-const limiter = new RequestRateLimiter({
-  backoffTime: 5,
-  requestRate: 60,
-  interval: 60,
-  timeout: 600,
+const limiter = new Bottleneck({
+  maxConcurrent: 3,
+  minTime: 1000
 });
 
-class MyRequestHandler {
- 
-  // this method is th eonly required interface to implement
-  // it gets passed the request onfig that is passed by the 
-  // user to the request method of the limiter. The mehtod msut
-  // return an instance of the BackoffError when the limiter 
-  // needs to back off
-  async request(requestConfig) {
-      const response = axios(requestConfig);
+//const wrapped = limiter.wrap(processRequest);
 
-      if (response.statusCode === 429) throw new BackoffError(`Need to nack off guys!`);
-      else return response;
-  }
-}
 
-limiter.setRequestHandler(new MyRequestHandler());
 
-function getComments(subreddit, start, end) {
-  let s = Math.floor(new Date(start).getTime() / 1000)
+async function getComments(subreddit, start, end) {
+  let posix_start = Math.floor(new Date(start).getTime() / 1000)
+  let s = posix_start
   let e = Math.floor(new Date(end).getTime() / 1000)
-
+  //e = s + 43200
+  let days = Math.floor((e - s) / 86400)
   let requests = []
 
   while (s < e) {
-    requests.append({method: 'get', 
-    url: `https://api.pushshift.io/reddit/search/comment/?size=100&sort=desc&sort_type=score&after=${s}&before=${start + 3600}&subreddit=${subreddit}`
-    })
+    requests.push({url: `https://api.pushshift.io/reddit/search/comment/?size=100&sort=desc&sort_type=score&after=${s}&before=${s + 3600}&subreddit=${subreddit}`,
+    config: {"method": 'GET', "mode": "cors", "Referrer-Policy": "no-referrer"}
+  })
 
     s += 3600
   }
 
-  const response = axios(requests[0])
-  console.log(response)
+  /* const responses = await limiter.schedule(() => {
+    const allTasks = requests.map(x => wrapped(x));
+
+    return Promise.all(allTasks);
+  }); */
+  const responses = await Promise.all(requests.map(x => limiter.schedule(processRequest, x)));
+  //const responses = await limiter.schedule(() =>  processRequest(requests[0]));
+
+  let comments = [];
+  let response_jsons = [];
+
+  responses.forEach(x => response_jsons.push(x.json()));
+  await Promise.all(response_jsons).then(result => result.forEach(sub_arr => {
+    sub_arr.data.forEach(x => {
+      if (x.body != "[removed]" && x.body != "[deleted]")
+        comments.push([x.created_utc, x.body.replace(',', '')])
+    })
+  }));
+
+  let bins = [];
+
+  for (let i=0; i<days*4; i++)
+    bins.push([])
+
+  for (let i=0; i<comments.length; i++)
+    bins[getBinIdx(posix_start, comments[i][0])].push(comments[i][1])
+
+  console.log(bins)
+
+  return bins;
+}
+
+function getBinIdx(start, current) {
+  return Math.floor((current - start) / 21600)
+}
+
+async function processRequest(params) {
+  let response = await fetch(params.url, params.config);
+  while (response.status != 200)
+    response = await fetch(params.url, params.config);
+  return response
 }
 
 function HSLToHex(h,s,l) {
@@ -89,30 +116,52 @@ function heatMapColorforValue(value){
     return "color: " + HSLToHex(h, 100, 50);
 }
 
-async function getSentiment (subreddit, start, end) {
+async function sentimentRequest(comments)
+{
   let request_data = new FormData()
 
-  request_data.append('subreddit', subreddit)
-  request_data.append('start', start)
-  request_data.append('end', end)
-  let resp = await axios.post('http://127.0.0.1:5000/',
+  comments.forEach((item) => {
+    request_data.append('comments[]', item)
+  })
+  /* let payload = {
+    comments: comments
+  } */
+  return axios.post('http://127.0.0.1:5000/',
   request_data,
-  {headers: {'Content-Type': 'multipart/form-data' }})
+  {headers: {'Content-Type': 'multipart/form-data' }});
+  /* return axios({
+    url: 'http://127.0.0.1:5000/',
+    method: 'post',
+    data: payload
+  }) */
+}
 
-  let response_data = resp.data.sentiments
+async function getSentiment (subreddit, start, end) {
+  let bins = await getComments(subreddit, start, end)
+  let responses = []
+  bins.forEach(bin => responses.push(sentimentRequest(bin)))
+  responses = await Promise.all(responses)
+  
+  let models = Object.keys(responses[0].data.sentiment)
 
-  let keys = Object.keys(response_data)
+  let data = {}
 
-  for(var i=0; i < keys.length; i++)
+  models.forEach(model => {data[model] = [['Time Frame', 'Sentiment', { "role": 'style' }]]}) 
+  let val
+
+  for(var i=0; i < models.length; i++)
   {
-    for(var j=1; j < response_data[keys[i]].length; j++)
+    for(var j=0; j < responses.length; j++)
     {
-      response_data[keys[i]][j].push(heatMapColorforValue(((-1 * response_data[keys[i]][j][1]) + 1) / 2))
+      val = responses[j].data.sentiment[models[i]]
+      data[models[i]].push(['', val, heatMapColorforValue(((-1 * val) + 1) / 2)])
     }
   }
 
+  console.log(data)
+
   return {
-      data: response_data,
+      data: data,
       chartOptions: {
           chart: {
               title: `/r/${subreddit} sentiment ${start} to ${end}`

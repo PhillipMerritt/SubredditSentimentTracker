@@ -60,9 +60,9 @@ export default {
     },
     data () {
         return {
-            subreddit: '',
-            start: '',
-            end: '',
+            subreddit: 'politics',
+            start: '2020-10-05',
+            end: '2020-10-06',
             chartData: [],
             chartOptions: {},
             chosenModel: null

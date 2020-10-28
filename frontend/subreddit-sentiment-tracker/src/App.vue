@@ -1,5 +1,6 @@
 <template>
   <div id="app">
+     <meta name="referrer" content="no-referrer" />
     <h1>Reddit Sentiment Tracker</h1>
     <SentimentChart/>
   </div>
