@@ -8,7 +8,9 @@ cors = CORS(app)
 @app.route('/', methods=['GET', 'POST']) ##defining route/end point, methods?
 @cross_origin()
 def SetValues(): ##function to return floating point representation to front end
-    return jsonify({"sentiment": getSentiment(request.form.getlist('comments[]'))})#ValueArray
+    comments = request.form.getlist('comments[]')
+    links = request.form.getlist('links[]')
+    return jsonify({"data": getSentiment(comments, links)})#ValueArray
 
 if __name__ == "__main__":
     app.run(debug = True)

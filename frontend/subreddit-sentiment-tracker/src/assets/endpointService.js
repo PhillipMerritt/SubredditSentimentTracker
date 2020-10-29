@@ -1,52 +1,5 @@
-//import FormData from 'form-data'
 import axios from 'axios'
-//axios.defaults.headers.common['Access-Control-Allow-Origin'] = '*';
 
-//const wrapped = limiter.wrap(processRequest);
-
-
-
-/* async function getComments(subreddit, start, end) {
-  let posix_start = Math.floor(new Date(start).getTime() / 1000)
-  let s = posix_start
-  let e = Math.floor(new Date(end).getTime() / 1000)
-  let days = Math.floor((e - s) / 86400)
-  let requests = []
-
-  while (s < e) {
-    requests.push({url: `https://api.pushshift.io/reddit/search/comment/?size=100&sort=desc&sort_type=score&after=${s}&before=${s + 3600}&subreddit=${subreddit}`,
-    config: {"method": 'GET', "mode": "cors", "Referrer-Policy": "no-referrer"}
-  })
-
-    s += 3600
-  }
-
-  const responses = await Promise.all(requests.map(x => limiter.schedule(processRequest, x)));
-
-  let comments = [];
-  let response_jsons = [];
-
-  responses.forEach(x => response_jsons.push(x.json()));
-  await Promise.all(response_jsons).then(result => result.forEach(sub_arr => {
-    sub_arr.data.forEach(x => {
-      if (x.body != "[removed]" && x.body != "[deleted]")
-        comments.push([x.created_utc, x.body.replace(',', '')])
-    })
-  }));
-
-  let bins = [];
-
-  for (let i=0; i<days*4; i++)
-    bins.push([])
-
-  for (let i=0; i<comments.length; i++)
-    bins[getBinIdx(posix_start, comments[i][0])].push(comments[i][1])
-
-  console.log(bins)
-
-  return bins;
-}
- */
 function HSLToHex(h,s,l) {
     s /= 100;
     l /= 100;
@@ -97,46 +50,53 @@ async function sentimentRequest(comments)
   let request_data = new FormData()
 
   comments.forEach((item) => {
-    request_data.append('comments[]', item)
+    request_data.append('links[]', item[0])
   })
-  /* let payload = {
-    comments: comments
-  } */
+
+  comments.forEach((item) => {
+    request_data.append('comments[]', item[1])
+  })
+
   return axios.post('http://127.0.0.1:5000/',
   request_data,
   {headers: {'Content-Type': 'multipart/form-data' }});
-  /* return axios({
-    url: 'http://127.0.0.1:5000/',
-    method: 'post',
-    data: payload
-  }) */
 }
 
 async function getSentiment (subreddit, start, end, bins) {
   let responses = []
-  bins.forEach(bin => responses.push(sentimentRequest(bin)))
+  bins.forEach(bin => responses.push(sentimentRequest(bin.comments)))
   responses = await Promise.all(responses)
   
-  let models = Object.keys(responses[0].data.sentiment)
+  let models = Object.keys(responses[0].data.data)
 
   let data = {}
+  let tooltips = {}
 
-  models.forEach(model => {data[model] = [['Time Frame', 'Sentiment', { "role": 'style' }]]}) 
+  models.forEach(model => {
+    data[model] = [['Time Frame', 'Sentiment', { "role": 'style' }, { "role": 'tooltip' }]]
+    tooltips[model] = []
+  })
+
   let val
+  let most_pos
+  let most_neg
 
   for(var i=0; i < models.length; i++)
   {
     for(var j=0; j < responses.length; j++)
     {
-      val = responses[j].data.sentiment[models[i]]
-      data[models[i]].push(['', val, heatMapColorforValue(((-1 * val) + 1) / 2)])
+      val = responses[j].data.data[models[i]].sentiment
+      data[models[i]].push([bins[j].label, val, heatMapColorforValue(((-1 * val) + 1) / 2), ""])
+
+      most_pos = "https://www.reddit.com/" + responses[j].data.data[models[i]].most_positive
+      most_neg = "https://www.reddit.com/" + responses[j].data.data[models[i]].most_negative
+      tooltips[models[i]].push({"most_positive": most_pos, "most_negative": most_neg})
     }
   }
 
-  console.log(data)
-
   return {
       data: data,
+      tooltips: tooltips,
       chartOptions: {
           chart: {
               title: `/r/${subreddit} sentiment ${start} to ${end}`
