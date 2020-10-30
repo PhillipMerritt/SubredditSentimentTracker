@@ -6,7 +6,11 @@ import VueEllipseProgress from 'vue-ellipse-progress';
 
 Vue.use(VueEllipseProgress);
 
-Vue.use(VueFormulate)
+Vue.use(VueFormulate)/* , {
+  classes: {
+    outer: 'formWrapper',
+  }
+}) */
 
 Vue.config.productionTip = false
 Vue.prototype.$http = axios

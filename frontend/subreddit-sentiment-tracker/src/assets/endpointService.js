@@ -41,7 +41,11 @@ function HSLToHex(h,s,l) {
 }
 
 function heatMapColorforValue(value){
-    var h = (1.0 - value) * 240
+    var h = ((value * 8) + 1) * 120
+    if (h > 240)
+      h = 240
+    else if (h < 0)
+      h = 0
     return "color: " + HSLToHex(h, 100, 50);
 }
 
@@ -86,10 +90,10 @@ async function getSentiment (subreddit, start, end, bins) {
     for(var j=0; j < responses.length; j++)
     {
       val = responses[j].data.data[models[i]].sentiment
-      data[models[i]].push([bins[j].label, val, heatMapColorforValue(((-1 * val) + 1) / 2), ""])
+      data[models[i]].push([bins[j].label, val, heatMapColorforValue(val), "Click me to load extreme posts!"])
 
-      most_pos = "https://www.reddit.com/" + responses[j].data.data[models[i]].most_positive
-      most_neg = "https://www.reddit.com/" + responses[j].data.data[models[i]].most_negative
+      most_pos = responses[j].data.data[models[i]].most_positive
+      most_neg = responses[j].data.data[models[i]].most_negative
       tooltips[models[i]].push({"most_positive": most_pos, "most_negative": most_neg})
     }
   }
@@ -99,7 +103,9 @@ async function getSentiment (subreddit, start, end, bins) {
       tooltips: tooltips,
       chartOptions: {
           chart: {
-              title: `/r/${subreddit} sentiment ${start} to ${end}`
+              title: `/r/${subreddit} sentiment ${start} to ${end}`,
+              legend: { position: "none" },
+              fontName: 'Armata'
           }
       }
   }
