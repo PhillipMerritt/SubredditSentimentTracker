@@ -44,7 +44,7 @@ export default {
 
 body, html {
   height: 100%;
-  background-color: #f6f5f5;
+  background-color: #ecf4f3;
 }
 #app {
   height: 100%; 

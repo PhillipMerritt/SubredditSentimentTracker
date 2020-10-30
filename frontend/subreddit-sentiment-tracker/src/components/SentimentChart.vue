@@ -6,6 +6,7 @@
             :data="selectedData"
             :options="chartOptions"
             :events="chartEvents"
+            @ready="onChartReady"
             ref="gChart"
             />
 
@@ -32,7 +33,7 @@
                     <span slot="legend-value">/{{requiredRequests}}</span>
                 </template>
                 <template v-slot:legend-caption>
-                    <p slot="legend-caption" :style="'color: ' + colors[0] + ';'">Comment Requests</p>
+                    <p slot="legend-caption" :style="'font-size: 1rem; color: ' + colors[0] + ';'">Comment Queries</p>
                 </template>
             </vue-ellipse-progress>
 
@@ -48,7 +49,7 @@
                     <span slot="legend-value">/{{requiredSentimentRequests}}</span>
                 </template>
                 <template v-slot:legend-caption>
-                    <p slot="legend-caption" :style="'color: ' + colors[0] + ';'">Sentiment Requests</p>
+                    <p slot="legend-caption" :style="'color: ' + colors[0] + ';'">Sentiment Queries</p>
                 </template>
             </vue-ellipse-progress>
         </div>
@@ -220,7 +221,6 @@ export default {
             this.completedSentimentRequests = 0
             this.requiredSentimentRequests = days * 4
             this.requiredRequests = days * 24
-            console.log(this.requiredRequests)
             this.selectedPos = null
             this.selectedNeg = null
             this.chosenModel = null     
@@ -299,7 +299,6 @@ export default {
         },
         createChart: async function (subreddit, start, end, sentimentData) {
             let responses = sentimentData.responses
-            console.log(responses)
             let models = sentimentData.models
             let labels = sentimentData.labels
 
@@ -350,8 +349,9 @@ export default {
             else if (h < 0)
             h = 0
             return "color: " + this.HSLToHex(h, 100, 50); */
-            console.log(value)
-            return this.colors[1]
+            if (value > 0)
+                return this.colors[2]
+            return this.colors[3]
         },
         HSLToHex: function (h,s,l) {
             s /= 100;
@@ -437,6 +437,21 @@ export default {
             let response = await fetch(url, {"method": 'GET', "mode": "cors", "Referrer-Policy": "no-referrer"})
             response = await response.json()
             return {title: response.data[0].title, link: response.data[0].full_link}
+        },
+        onChartReady: function () {
+            const table = this.$refs.gChart.chartObject
+            table.animation.startup = true
+            table.animation.duration = 15000
+            /* table.hAxis.gridlines.color = this.colors[0]
+            table.hAxis.minorGridlines.color = this.colors[0]
+            table.vAxis.baselineColor = this.colors[0]
+            table.vAxis.gridlines.color = this.colors[0]
+            table.vAxis.minorGridlines.color = this.colors[0]
+            table.hAxis.titleTextStyle = {color: this.colors[0], fontName: "Armata"}
+            table.vAxis.titleTextStyle = {color: this.colors[0], fontName: "Armata"}
+            table.hAxis.textStyle = {color: this.colors[0], fontName: "Armata"}
+            table.vAxis.textStyle = {color: this.colors[0], fontName: "Armata"}
+            table.titleTextStyle = {color: this.colors[0], fontName: "Armata"} */
         }
     }
 }
@@ -448,7 +463,7 @@ export default {
         justify-content: center;
     }
     .formWrapper {
-        font-family: Arizonia, Armata, Avenir, Helvetica, Arial, sans-serif;
+        font-family: Armata, Avenir, Helvetica, Arial, sans-serif;
     }
 
     .linksWrapper {
