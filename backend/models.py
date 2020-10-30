@@ -4,11 +4,15 @@ nltk.download('vader_lexicon')
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 s = SentimentIntensityAnalyzer()
 
+from azure.ai.textanalytics import TextAnalyticsClient
+from azure.core.credentials import AzureKeyCredential
+azureclient = TextAnalyticsClient(endpoint="https://textsentimentcheck.cognitiveservices.azure.com/", credential=AzureKeyCredential("36e55f902483497bae2aa7bcbb663a52"))
+
 # add an instance of your model to this once you have defined it
 models = []
 
-# all added sentiment analysis models must be wrapped  
-# in a class that inherits from this class to enforce 
+# all added sentiment analysis models must be wrapped
+# in a class that inherits from this class to enforce
 # a common api between different models
 class baseSentimentModel(ABC):
     def __init__(self, name, model):
@@ -29,21 +33,13 @@ class nltkModel(baseSentimentModel):
 
 models.append(nltkModel('nltkVader', s))
 
-"""
-example of this:
 
-class myModel(baseSentimentModel):
-    # this example is a categorical model
-    # so the values must be converted to numbers
+class azureModel(baseSentimentModel):
     def predict(self, text):
-        pred = self.model.evaluateSentiment(text)
+        response = self.model.analyze_sentiment(documents=text)[0]
+        return response.confidence_scores.positive + response.confidence_scores.negative
 
-        if pred == 'positive':
-            return 1.0
-        elif pred == 'nuetral':
-            return 0.0
-        else:
-            return -1.0
+models.append(azureModel('azureModel', azureclient))
 
-models.append(myModel('example model', somePackage.model))
-"""
+
+
