@@ -5,18 +5,8 @@ nltk.download('vader_lexicon')
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 s = SentimentIntensityAnalyzer()
 
-<<<<<<< HEAD
 import flair
 flair_sentiment = flair.models.TextClassifier.load('en-sentiment')
-
-""" from azure.ai.textanalytics import TextAnalyticsClient
-from azure.core.credentials import AzureKeyCredential
-azureclient = TextAnalyticsClient(endpoint="https://textsentimentcheck.cognitiveservices.azure.com/", credential=AzureKeyCredential("36e55f902483497bae2aa7bcbb663a52")) """
-=======
-from azure.ai.textanalytics import TextAnalyticsClient
-from azure.core.credentials import AzureKeyCredential
-azureclient = TextAnalyticsClient(endpoint="https://textsentimentcheck.cognitiveservices.azure.com/", credential=AzureKeyCredential("36e55f902483497bae2aa7bcbb663a52"))
->>>>>>> 62fa02f69ce808ca6286af29c35cf976c5722860
 
 # add an instance of your model to this once you have defined it
 models = []
@@ -60,32 +50,6 @@ class flairModel(baseSentimentModel):
 
 models.append(flairModel('flair', flair_sentiment))
 
-""" class azureModel(baseSentimentModel):
-    def predict(self, texts):
-        responses = self.model.analyze_sentiment(documents=texts)
-
-        return list(map(self.parseResponses, responses))
-        
-    def parseResponses(self, responses):
-        totals = [0.0, 0.0, 0.0]
-        for response in responses:
-            totals[0] += response.confidence_scores.positive
-            totals[1] += response.confidence_scores.neutral
-            totals[2] += response.confidence_scores.negative
-
-        max_idx = 0
-        if totals[1] > totals[0]:
-            max_idx = 1
-        if totals[2] > totals[max_idx]:
-            max_idx = 2
-        
-        return 1.0 - max_idx # this returns 1.0 for pos, 0.0 for neutral, and -1.0 for negative
-
-models.append(azureModel('azureModel', azureclient)) """
-
-
-
-
 """
 example of this:
 
@@ -95,6 +59,4 @@ class azureModel(baseSentimentModel):
         return response.confidence_scores.positive + response.confidence_scores.negative
 
 models.append(azureModel('azureModel', azureclient))
-
-
-
+"""
