@@ -17,6 +17,7 @@
                 type="select"
                 label="Select a model: "
                 style="margin: 10px; padding: 10px;"
+                @input="selectedNeg = null"
                 />
             </div>
         </div>
@@ -28,12 +29,13 @@
             :colorFill="colors[1]"
             :fontColor="colors[0]"
             thickness="7%"
+            animation="default 500 40"
             >
                 <template v-slot:legend-value>
                     <span slot="legend-value">/{{requiredRequests}}</span>
                 </template>
                 <template v-slot:legend-caption>
-                    <p slot="legend-caption" :style="'font-size: 1rem; color: ' + colors[0] + ';'">Comment Queries</p>
+                    <p slot="legend-caption" :style="'font-size: 1rem; color: ' + colors[0] + ';'">Comment Batches</p>
                 </template>
             </vue-ellipse-progress>
 
@@ -44,6 +46,7 @@
             :colorFill="colors[1]"
             :fontColor="colors[0]"
             thickness="7%"
+            animation="default 500 40"
             >
                 <template v-slot:legend-value>
                     <span slot="legend-value">/{{requiredSentimentRequests}}</span>
@@ -90,18 +93,36 @@
                     Most Positive Thread: 
                 </div>
                 <a style="grid-column: 2 / 3; grid-row: 1 / 2; justify-self: start; padding: 10px;" 
-                    :href="selectedPos.link">
+                    :href="selectedPos.link"
+                    target=”_blank”>
                     {{selectedPos.title}}
                 </a>
                 <div style="grid-column: 1 / 2; grid-row: 2 / 3; justify-self: end; padding: 10px;">
                     Most Negative Thread: 
                 </div>
                 <a style="grid-column: 2 / 3; grid-row: 2 / 3; justify-self: start; padding: 10px;" 
-                    :href="selectedNeg.link">
+                    :href="selectedNeg.link"
+                    target=”_blank”>
                     {{selectedNeg.title}}
                 </a>
             </div>
         </div>
+
+        <!-- <APIcontrols 
+        :dayRange="dayRange"
+        v-bind:top.sync="top"
+        v-bind:timeFrame.sync="timeFrame"
+        v-bind:perTimeFrame.sync="perTimeFrame"
+        /> -->
+        <APIcontrols 
+        :dayRange="dayRange"
+        @updateSort="updateSort"
+        @updateTf="updateTf"
+        @updateLimit="updateLimit"
+        />
+        <!-- @updateSort="updateSort"
+        @updateTf="updateTf"
+        @updateLimit="updateLimit" -->
         
     </div>
 </template>
@@ -110,11 +131,13 @@
 import { GChart } from 'vue-google-charts'
 import Bottleneck from "bottleneck"
 import axios from 'axios'
+import APIcontrols from './APIcontrols'
 
 export default {
     name: 'SentimentChart',
     components: {
-        GChart
+        GChart,
+        APIcontrols
     },
     props: {
         colors: Array
@@ -129,7 +152,7 @@ export default {
             tooltipData: {},
             chosenModel: null,
             limiter: new Bottleneck({
-                maxConcurrent: 4,
+                maxConcurrent: 2,
                 minTime: 1000
             }),
             requiredRequests: 0,
@@ -144,11 +167,13 @@ export default {
                     const table = this.$refs.gChart.chartObject;
                     const selection = table.getSelection();
                     this.loading = true
-                    this.selectedPos = await this.getSubmission(this.tooltipData[this.chosenModel][selection[0].row].most_positive)
-                    this.selectedNeg = await this.getSubmission(this.tooltipData[this.chosenModel][selection[0].row].most_negative)
-                    this.loading = false
+                    this.getSubmission(this.tooltipData[this.chosenModel][selection[0].row].most_positive, this.tooltipData[this.chosenModel][selection[0].row].most_negative)
                 }
-            }
+            },
+            top: true,
+            timeFrame: 'hour',
+            perTimeFrame: '100',
+            tfDict: { ten_min: '10', twenty_min: '20', thirty_min: '30', hour: '60', two_hour: '120', three_hour: '180', six_hours: '360' }
         }
     },
     computed: {
@@ -167,6 +192,20 @@ export default {
         },
         sentimentProgress: function () {
             return 100 * this.completedSentimentRequests / this.requiredSentimentRequests
+        },
+        dayRange: function () {
+            let s = this.getUTCseconds(new Date(this.start))
+            let e = this.getUTCseconds(new Date(this.end))
+            return Math.floor((e - s) / 86400)
+        },
+        tfPerCol: function () {
+            return Math.floor(360 / parseInt(this.tfDict[this.timeFrame]))
+        },
+        perColumn: function () {
+            return this.tfPerCol * parseInt(this.perTimeFrame)
+        },
+        totalReq: function () {
+            return this.reqPerTf * this.tfPerCol * 4 * this.dayRange
         }
     },
     mounted: function () {
@@ -175,10 +214,12 @@ export default {
             const id = jobInfo.options.id;
             console.warn(`Job ${id} failed: ${error}`);
             
-            if (jobInfo.retryCount === 0) { // Here we only retry once
+            if (jobInfo.retryCount < 10) { // Here we only retry once
                 console.log(`Retrying job ${id} in 25ms!`);
                 return 25;
-        }
+            } else {
+                console.log('Request failed 10 times. Stopping retries...')
+            }
         });
         
         // Listen to the "retry" event
@@ -191,7 +232,7 @@ export default {
             this.chartData = data.data
             this.chartOptions = data.chartOptions.chart
             this.tooltipData = data.tooltips
-            this.chosenModel = Object.keys(this.chartData)[0]
+            setTimeout(this.chosenModel = Object.keys(this.chartData)[0], 40)
             this.completedRequests = 0
             this.completedSentimentRequests = 0
             this.requiredSentimentRequests = 0
@@ -220,41 +261,47 @@ export default {
             this.completedRequests = 0
             this.completedSentimentRequests = 0
             this.requiredSentimentRequests = days * 4
-            this.requiredRequests = days * 24
+            this.requiredRequests = this.requiredSentimentRequests * this.tfPerCol
             this.selectedPos = null
             this.selectedNeg = null
-            this.chosenModel = null     
+            this.chosenModel = null
 
             let request_bins = []
             let labels = []
+            let sentimentResponses = []
 
             let req_count = 0
+            let tfSize = parseInt(this.tfDict[this.timeFrame]) * 60
             
             while (s < e) {
-                if (req_count % 6 === 0) // if this is the beginning of a column
+                if (req_count % this.tfPerCol === 0) // if this is the beginning of a column
                 {
-                    if (req_count % 24 === 0)
+                    if (req_count % (this.tfPerCol * 4) === 0)
                         labels.push(this.getDateLabel(s))
                     else
                         labels.push("")
 
                     request_bins.push([])
+                    sentimentResponses.push([])
                 }
                 request_bins[request_bins.length - 1].push({
-                    url: `https://api.pushshift.io/reddit/search/comment/?size=100&sort=desc&sort_type=score&after=${s}&before=${s + 3600}&subreddit=${subreddit}`,
-                    config: {"method": 'GET', "mode": "cors", "Referrer-Policy": "no-referrer"}
+                    "start": s,
+                    "end": s+tfSize
                 })
 
-                s += 3600
+                s += tfSize
                 req_count += 1
             }
 
-            let commentResponses = []
-            let sentimentResponses = []
+            
             let models = []
-            let processComments = async (comments) => {
+            let processComments = async (commentBatches, bin_idx) => {
+                let comments = []
+
+                commentBatches.forEach(batch => comments.push(...batch))
+
                 let response = this.sentimentRequest(comments)
-                sentimentResponses.push(response)
+                sentimentResponses[bin_idx] = response
                 response.then(result => { 
                     this.completedSentimentRequests += 1 
                     if (models.length === 0)
@@ -262,40 +309,44 @@ export default {
                 })
             }
 
-            request_bins.forEach(async (requests) => {
-                let comments = []
-                let response_jsons = []
+            let commentBatches = []
+            for (let i=0; i<request_bins.length; i++)
+            {
+                commentBatches = await Promise.all(request_bins[i].map(x => this.collectComments(x)));
+                processComments(commentBatches, i)
+            }
 
-                let responses = Promise.all(requests.map(x => this.limiter.schedule(this.processRequest, x)));
-                commentResponses.push(responses)
-                await responses.then((result) => {
-                    result.forEach(x => response_jsons.push(x.json()));
-                })
+            function ensureSentimentSize(sentimentResponses, requiredSentimentRequests) {
+                return new Promise(function (resolve, rejectIgnored) { // eslint-disable-line no-unused-vars
+                    (function waitForSentiments(){
+                        if (sentimentResponses.length === requiredSentimentRequests)
+                        {
+                            console.log("size fulfilled!")
+                         return resolve();
+                        }
+                        setTimeout(waitForSentiments, 30);
+                    })();
+            });
+}
 
-
-                await Promise.all(response_jsons).then(result => result.forEach(sub_arr => {
-                    sub_arr.data.forEach(x => {
-                    if (x.body != "[removed]" && x.body != "[deleted]")
-                        comments.push([this.slicePerma(x.permalink), x.body.replace(',', '')])
-                    })
-                }));
-
-                /* for (let i=0; i<comments.length; i++)
-                    bins[bin_idx].comments.push([comments[i][1], comments[i][2]]) */
-
-                processComments(comments)
-            })
+            await ensureSentimentSize(sentimentResponses, this.requiredSentimentRequests)
 
             let final_data = {}
 
-            await Promise.all(commentResponses)
-            await Promise.all(sentimentResponses).then(result => final_data = {
+            await Promise.all(sentimentResponses).then(result => final_data = { 
                 "responses": result,
                 "models": models,
                 "labels": labels
             })
+            console.log('sentiments collected')
 
             return final_data
+        },
+        buildUrl: function (start, end, limit) {
+            let url = `https://api.pushshift.io/reddit/search/comment/?size=${limit}&sort_type=score&after=${start}&before=${end}&subreddit=${this.subreddit}`
+            if (this.top)
+                url += '&sort=desc'
+            return url
         },
         createChart: async function (subreddit, start, end, sentimentData) {
             let responses = sentimentData.responses
@@ -401,14 +452,59 @@ export default {
         {
             return Math.floor((current - start) / 21600)
         },
-        processRequest: async function(params) 
+        processRequest: async function(url) 
         {
-            let response = await fetch(params.url, params.config);
+            let response = await fetch(url, {"method": 'GET', "mode": "cors", "Referrer-Policy": "no-referrer"});
 
-            if (response.status === 200)
-                this.completedRequests += 1
+            
             
             return response
+        },
+        collectComments: async function(params)
+        {
+            let totalRequired = parseInt(this.perTimeFrame)
+            let commentsRequired = totalRequired > 100 ? 100 : totalRequired
+            let url = this.buildUrl(params.start, params.end, commentsRequired)
+            let response = await this.limiter.schedule(this.processRequest, url);
+
+            let response_json = await response.json()
+            let comments = []
+            let maxTime = 0
+            let needMore = (response_json.data.length < totalRequired && !this.top)
+            response_json.data.forEach(x => {
+                if (x.body != "[removed]" && x.body != "[deleted]") {
+                    comments.push([this.slicePerma(x.permalink), x.body.replace(',', '')])
+                    if (needMore && x.created_utc > maxTime)
+                        maxTime = x.created_utc
+                }
+                
+            })
+
+            let left = 0
+
+            while (needMore)
+            {
+                left = totalRequired - comments.length
+                commentsRequired = left > 100 ? 100 : left
+                url = this.buildUrl(maxTime, params.end, commentsRequired)
+                response = await this.limiter.schedule(this.processRequest, url)
+                response_json = await response.json()
+                needMore = response_json.data.length < left
+                response_json.data.forEach(x => {
+                    if (x.body != "[removed]" && x.body != "[deleted]") {
+                        comments.push([this.slicePerma(x.permalink), x.body.replace(',', '')])
+                        if (needMore && x.created_utc > maxTime)
+                            maxTime = x.created_utc
+                    }
+                })
+
+                if (response_json.data.length === 0)
+                    needMore = false
+
+            }
+            
+            this.completedRequests += 1
+            return comments
         },
         sentimentRequest: async function(comments)
         {
@@ -432,26 +528,30 @@ export default {
         sentimentLegend: function () {
             return `${this.completedSentimentRequests}`
         },
-        getSubmission: async function (id) {
-            let url = `https://api.pushshift.io/reddit/search/submission/?ids=${id}`
-            let response = await fetch(url, {"method": 'GET', "mode": "cors", "Referrer-Policy": "no-referrer"})
-            response = await response.json()
-            return {title: response.data[0].title, link: response.data[0].full_link}
+        getSubmission: async function (pos_id, neg_id) {
+            let requests = [`https://api.pushshift.io/reddit/search/submission/?ids=${pos_id}`,
+                            `https://api.pushshift.io/reddit/search/submission/?ids=${neg_id}`]
+            
+            let responses = await Promise.all(requests.map(x => this.limiter.schedule(this.processRequest, x)));
+            
+            responses[0].json().then(result => this.selectedPos = {title: result.data[0].title, link: result.data[0].full_link})
+            responses[1].json().then(result => {
+                this.selectedNeg = {title: result.data[0].title, link: result.data[0].full_link}
+                this.loading = false
+            })
         },
         onChartReady: function () {
             const table = this.$refs.gChart.chartObject
-            table.animation.startup = true
-            table.animation.duration = 15000
-            /* table.hAxis.gridlines.color = this.colors[0]
-            table.hAxis.minorGridlines.color = this.colors[0]
-            table.vAxis.baselineColor = this.colors[0]
-            table.vAxis.gridlines.color = this.colors[0]
-            table.vAxis.minorGridlines.color = this.colors[0]
-            table.hAxis.titleTextStyle = {color: this.colors[0], fontName: "Armata"}
-            table.vAxis.titleTextStyle = {color: this.colors[0], fontName: "Armata"}
-            table.hAxis.textStyle = {color: this.colors[0], fontName: "Armata"}
-            table.vAxis.textStyle = {color: this.colors[0], fontName: "Armata"}
-            table.titleTextStyle = {color: this.colors[0], fontName: "Armata"} */
+            console.log(table)
+        },
+        updateSort: function (value) {
+            this.top = value
+        },
+        updateTf: function (value) {
+            this.timeFrame = value
+        },
+        updateLimit: function (value) {
+            this.perTimeFrame = value
         }
     }
 }
