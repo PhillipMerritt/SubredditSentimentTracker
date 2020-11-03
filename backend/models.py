@@ -50,7 +50,14 @@ class flairModel(baseSentimentModel):
     def predict(self, texts):
         sents = [flair.data.Sentence(text) for text in texts]
         self.model.predict(sents)
-        return [self.sentMapping[t.labels[0].value] for t in sents]
+        result = []
+        for i, t in enumerate(sents):
+
+            try:
+                result.append(self.sentMapping[t.labels[0].value])
+            except:
+                print(texts[i])
+        return result
 
 models.append(flairModel('flair', flair_sentiment))
 

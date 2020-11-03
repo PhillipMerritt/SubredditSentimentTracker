@@ -145,14 +145,14 @@ export default {
     data () {
         return {
             subreddit: 'politics',
-            start: '2020-10-05',
-            end: '2020-10-07',
+            start: '2016-11-05',
+            end: '2016-11-12',
             chartData: [],
             chartOptions: {},
             tooltipData: {},
             chosenModel: null,
             limiter: new Bottleneck({
-                maxConcurrent: 2,
+                maxConcurrent: 3,
                 minTime: 1000
             }),
             requiredRequests: 0,
@@ -319,7 +319,7 @@ export default {
             function ensureSentimentSize(sentimentResponses, requiredSentimentRequests) {
                 return new Promise(function (resolve, rejectIgnored) { // eslint-disable-line no-unused-vars
                     (function waitForSentiments(){
-                        if (sentimentResponses.length === requiredSentimentRequests)
+                        if (sentimentResponses.length >= requiredSentimentRequests)
                         {
                             console.log("size fulfilled!")
                          return resolve();
@@ -443,8 +443,10 @@ export default {
         
             return "#" + r + g + b;
         },
-        slicePerma: function (link) // returns a slice of the permalink containing the thread id
+        slicePerma: function (link, link_id) // returns a slice of the permalink containing the thread id
         {
+            if (link_id != undefined)
+                return link_id.slice(link_id.length - 6, link_id.length)
             let idx = link.indexOf('/comments/') + 10
             return link.slice(idx, idx + 6)
         },
@@ -456,8 +458,6 @@ export default {
         {
             let response = await fetch(url, {"method": 'GET', "mode": "cors", "Referrer-Policy": "no-referrer"});
 
-            
-            
             return response
         },
         collectComments: async function(params)
@@ -473,7 +473,7 @@ export default {
             let needMore = (response_json.data.length < totalRequired && !this.top)
             response_json.data.forEach(x => {
                 if (x.body != "[removed]" && x.body != "[deleted]") {
-                    comments.push([this.slicePerma(x.permalink), x.body.replace(',', '')])
+                    comments.push([this.slicePerma(x.permalink, x.link_id), x.body.replace(',', '')])
                     if (needMore && x.created_utc > maxTime)
                         maxTime = x.created_utc
                 }
