@@ -214,7 +214,7 @@ export default {
             const id = jobInfo.options.id;
             console.warn(`Job ${id} failed: ${error}`);
             
-            if (jobInfo.retryCount < 10) { // Here we only retry once
+            if (jobInfo.retryCount < 10000) { // Here we only retry once
                 console.log(`Retrying job ${id} in 25ms!`);
                 return 25;
             } else {
@@ -295,12 +295,9 @@ export default {
 
             
             let models = []
-            let processComments = async (commentBatches, bin_idx) => {
-                let comments = []
+            let processComments = async (bin_idx) => {
 
-                commentBatches.forEach(batch => comments.push(...batch))
-
-                let response = this.sentimentRequest(comments)
+                let response = this.sentimentRequest(bin_idx)
                 sentimentResponses[bin_idx] = response
                 response.then(result => { 
                     this.completedSentimentRequests += 1 
@@ -309,11 +306,14 @@ export default {
                 })
             }
 
-            let commentBatches = []
+            //let commentBatches = []
             for (let i=0; i<request_bins.length; i++)
             {
-                commentBatches = await Promise.all(request_bins[i].map(x => this.collectComments(x)));
-                processComments(commentBatches, i)
+                //commentBatches = await Promise.all(request_bins[i].map(x => this.collectComments(x)));
+                for (let j=0; j<this.tfPerCol; j++)
+                    await this.sleep(this.collectComments)
+
+                processComments(i)
             }
 
             function ensureSentimentSize(sentimentResponses, requiredSentimentRequests) {
@@ -460,63 +460,29 @@ export default {
 
             return response
         },
-        collectComments: async function(params)
+        collectComments: function()
         {
-            let totalRequired = parseInt(this.perTimeFrame)
-            let commentsRequired = totalRequired > 100 ? 100 : totalRequired
-            let url = this.buildUrl(params.start, params.end, commentsRequired)
-            let response = await this.limiter.schedule(this.processRequest, url);
-
-            let response_json = await response.json()
-            let comments = []
-            let maxTime = 0
-            let needMore = (response_json.data.length < totalRequired && !this.top)
-            response_json.data.forEach(x => {
-                if (x.body != "[removed]" && x.body != "[deleted]") {
-                    comments.push([this.slicePerma(x.permalink, x.link_id), x.body.replace(',', '')])
-                    if (needMore && x.created_utc > maxTime)
-                        maxTime = x.created_utc
-                }
-                
-            })
-
-            let left = 0
-
-            while (needMore)
-            {
-                left = totalRequired - comments.length
-                commentsRequired = left > 100 ? 100 : left
-                url = this.buildUrl(maxTime, params.end, commentsRequired)
-                response = await this.limiter.schedule(this.processRequest, url)
-                response_json = await response.json()
-                needMore = response_json.data.length < left
-                response_json.data.forEach(x => {
-                    if (x.body != "[removed]" && x.body != "[deleted]") {
-                        comments.push([this.slicePerma(x.permalink), x.body.replace(',', '')])
-                        if (needMore && x.created_utc > maxTime)
-                            maxTime = x.created_utc
-                    }
-                })
-
-                if (response_json.data.length === 0)
-                    needMore = false
-
-            }
-            
             this.completedRequests += 1
-            return comments
+            return
         },
-        sentimentRequest: async function(comments)
+        timeout: function(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        },
+        sleep: async function(fn) {
+            await this.timeout(2000)
+            return fn()
+        },
+        sentimentRequest: async function(idx)
         {
             let request_data = new FormData()
-
-            comments.forEach((item) => {
+            request_data.append('idx', idx)
+            /* comments.forEach((item) => {
                 request_data.append('links[]', item[0])
             })
 
             comments.forEach((item) => {
                 request_data.append('comments[]', item[1])
-            })
+            }) */
 
             return axios.post('http://127.0.0.1:5000/',
             request_data,
