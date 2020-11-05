@@ -3,20 +3,25 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS, cross_origin
 from sentiment import getSentiment
 import json
+from tqdm import tqdm
 app = Flask(__name__)
 cors = CORS(app)
 
 class DataStore():
-    def __init__():
-        data = {}
+    def __init__(self):
+        self.data = {}
+        for idx in tqdm(list(range(28))):
+            with open('stubs/{}.json'.format(idx)) as f:
+                self.data[idx] = json.load(f)
+        print('done loading stub')
+req_data = DataStore()
 
 @app.route('/', methods=['GET', 'POST']) ##defining route/end point, methods?
 @cross_origin()
 def SetValues(): ##function to return floating point representation to front end
     idx = int(request.form['idx'])
     print(idx)
-    with open('stubs/{}.json'.format(idx)) as f:
-        data = json.load(f)
+    data = req_data.data[idx]
     
     comments = data['comments']
     links = data['links']

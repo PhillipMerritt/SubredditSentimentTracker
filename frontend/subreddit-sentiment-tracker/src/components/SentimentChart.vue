@@ -144,9 +144,9 @@ export default {
     },
     data () {
         return {
-            subreddit: 'politics',
-            start: '2016-11-05',
-            end: '2016-11-12',
+            subreddit: '',
+            start: '',
+            end: '',
             chartData: [],
             chartOptions: {},
             tooltipData: {},
@@ -256,6 +256,7 @@ export default {
             let s = posix_start
             let e = this.getUTCseconds(new Date(end))
             let days = Math.floor((e - s) / 86400)
+            e = s + 86400 * days
             //let timeZoneOffset = start.getTimeZoneOffset()
 
             this.completedRequests = 0
@@ -292,6 +293,8 @@ export default {
                 s += tfSize
                 req_count += 1
             }
+
+            console.log(request_bins)
 
             
             let models = []
@@ -469,7 +472,7 @@ export default {
             return new Promise(resolve => setTimeout(resolve, ms));
         },
         sleep: async function(fn) {
-            await this.timeout(2000)
+            await this.timeout(1250)
             return fn()
         },
         sentimentRequest: async function(idx)
